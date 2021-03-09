@@ -1,0 +1,14 @@
+{
+    "name": "serialization",
+    "description": "Library for serialization functions used by the BOA blockchain.",
+
+    "license": "MIT",
+    "authors": [ "BPF Korea" ],
+    "copyright": "Copyright © 2021, BPF Korea",
+
+    "targetType": "library",
+
+    "dependencies": {
+        "bitblob": "~>1.1"
+    }
+}
