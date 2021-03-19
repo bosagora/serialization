@@ -79,7 +79,7 @@
     Refer to the function documentation for more details.
 
     Copyright:
-        Copyright (c) 2019-2021 BOS Platform Foundation
+        Copyright (c) 2019-2021 BOSAGORA Foundation
         All rights reserved.
 
     License:
