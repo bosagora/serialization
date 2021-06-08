@@ -90,6 +90,7 @@
 module agora.serialization.Serializer;
 
 import std.algorithm;
+import std.bitmanip;
 import std.format;
 import std.meta;
 import std.range;
@@ -460,11 +461,11 @@ public void serializePart (T) (in T record, scope SerializeDg dg,
         if (compact == CompactMode.Yes)
             toVarInt(record, dg);
         else
-            () @trusted { dg((cast(const(ubyte)*)&record)[0 .. T.sizeof]); }();
+            () @trusted { dg(nativeToLittleEndian(record)[0 .. T.sizeof]); }();
     }
     // Other integers / scalars
     else static if (isScalarType!T)
-        () @trusted { dg((cast(const(ubyte)*)&record)[0 .. T.sizeof]); }();
+       () @trusted { dg(nativeToLittleEndian(record)[0 .. T.sizeof]); }();
 
     // Recursively serialize fields for structs
     else static if (is(T == struct))
@@ -680,13 +681,13 @@ public T deserializeFull (T) (scope DeserializeDg dg,
             if (opts.compact == CompactMode.Yes)
                 return deserializeVarInt!T(dg);
             else
-                return () @trusted { return *cast(T*)(dg(T.sizeof).ptr); }();
+                return () @trusted { return littleEndianToNative!(T)(*cast(ubyte[T.sizeof]*)(dg(T.sizeof).ptr)); }();
         }
     }
 
     // Other integers / scalars
     else static if (isScalarType!T)
-        return () @trusted { return *cast(T*)(dg(T.sizeof).ptr); }();
+        return () @trusted { return littleEndianToNative!(T)(*cast(ubyte[T.sizeof]*)(dg(T.sizeof).ptr)); }();
 
     // Default to per-field deserialization for struct
     else static if (is(T == struct))
@@ -851,17 +852,17 @@ private void toVarInt (T) (in T var, scope SerializeDg dg) @trusted
     else if (var <= ushort.max)
     {
         dg(type[0..1]);
-        dg((cast(ubyte*)&(*cast(ushort*)&var))[0 .. ushort.sizeof]);
+        dg(nativeToLittleEndian(var)[0 .. ushort.sizeof]);
     }
     else if (var <= uint.max)
     {
         dg(type[1..2]);
-        dg((cast(ubyte*)&(*cast(uint*)&var))[0 .. uint.sizeof]);
+        dg(nativeToLittleEndian(var)[0 .. uint.sizeof]);
     }
     else if (var <= ulong.max)
     {
         dg(type[2..3]);
-        dg((cast(ubyte*)&(*cast(ulong*)&var))[0 .. ulong.sizeof]);
+        dg(nativeToLittleEndian(var)[0 .. ulong.sizeof]);
     }
     else
         assert(0);
@@ -938,7 +939,7 @@ private T deserializeVarInt (T) (scope DeserializeDg dg)
     T read (InType)() @trusted
     {
         import std.exception;
-        auto value = *cast(InType*)dg(InType.sizeof).ptr;
+        auto value = littleEndianToNative!(InType)(*cast(ubyte[InType.sizeof]*)(dg(InType.sizeof).ptr));
         static if (T.max < InType.max)
             enforce(value <= T.max);
         return cast(T)value;
