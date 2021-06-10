@@ -66,9 +66,11 @@
     stream to complete the deserialization of the type.
     In particular, length deserialization can be dangerous, as feeding an
     unsanitized length to `new` could result in memory exhaustion.
-    For this reason, the deserializer currently rejects length over
-    `MaxLengthDefault`. This limit can be adjusted in option, however
-    it won't be enforced if a length is deserialized with `deserializeFull`.
+    For this reason, the deserializer currently rejects length over `maxLength`,
+    which can be configured via the second argument to `deserializeFull`
+    (by default, `DeserializerOptions` allows for ~32k).
+    This limit won't be enforced if a length is manually deserialized with
+    `deserializeFull`, for example in a user-provided `fromBinary` hook.
     To deserialize length, use the `deserializeLength` function.
 
     Testing_data_types:
@@ -565,7 +567,8 @@ public size_t deserializeLength (
 
 *******************************************************************************/
 
-public T deserializeFull (T) (scope const(ubyte)[] data) @safe
+public T deserializeFull (T) (scope const(ubyte)[] data,
+    in DeserializerOptions opts = DeserializerOptions.init) @safe
 {
     scope DeserializeDg dg = (size) @safe
     {
@@ -577,7 +580,7 @@ public T deserializeFull (T) (scope const(ubyte)[] data) @safe
         data = data[size .. $];
         return res;
     };
-    return deserializeFull!T(dg);
+    return deserializeFull!T(dg, opts);
 }
 
 /// Ditto
