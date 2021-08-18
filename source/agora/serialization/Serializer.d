@@ -203,9 +203,9 @@ unittest
         254, 255, 255, 255, 255, // uint.max     == 5 bytes
         255, 255, 255, 255, 255, 255, 255, 255, 255, // ulong.max == 9bytes
         42,                      // Bar: ubyte(1) == 1 byte
-        42, 0, 0, 0, 0, 0, 0, 0, // Bar: long    == 8 bytes
+        0, 0, 0, 0, 0, 0, 0, 42, // Bar: long    == 8 bytes
         3, 1, 2, 3,              // ubyte[1,2,3] == 4 bytes
-        42, 0, 0, 0, 0, 0, 0, 0, // long         == 8 bytes
+        0, 0, 0, 0, 0, 0, 0, 42, // long         == 8 bytes
         2, 54, 57]);             // string       == 1 byte length + 2 char bytes
     assert(serialized.deserializeFull!Foo() == instance);
 }
@@ -468,11 +468,11 @@ public void serializePart (T) (in T record, scope SerializeDg dg,
         if (compact == CompactMode.Yes)
             toVarInt(record, dg);
         else
-            () @trusted { dg(nativeToLittleEndian(record)[0 .. T.sizeof]); }();
+            () @trusted { dg(nativeToBigEndian(record)[0 .. T.sizeof]); }();
     }
     // Other integers / scalars
     else static if (isScalarType!T)
-       () @trusted { dg(nativeToLittleEndian(record)[0 .. T.sizeof]); }();
+       () @trusted { dg(nativeToBigEndian(record)[0 .. T.sizeof]); }();
 
     // Recursively serialize fields for structs
     else static if (is(T == struct))
@@ -691,13 +691,13 @@ public T deserializeFull (T) (scope DeserializeDg dg,
             if (opts.compact == CompactMode.Yes)
                 return deserializeVarInt!T(dg);
             else
-                return () @trusted { return littleEndianToNative!(T)(*cast(ubyte[T.sizeof]*)(dg(T.sizeof).ptr)); }();
+                return () @trusted { return bigEndianToNative!(T)(*cast(ubyte[T.sizeof]*)(dg(T.sizeof).ptr)); }();
         }
     }
 
     // Other integers / scalars
     else static if (isScalarType!T)
-        return () @trusted { return littleEndianToNative!(T)(*cast(ubyte[T.sizeof]*)(dg(T.sizeof).ptr)); }();
+        return () @trusted { return bigEndianToNative!(T)(*cast(ubyte[T.sizeof]*)(dg(T.sizeof).ptr)); }();
 
     // Default to per-field deserialization for struct
     else static if (is(T == struct))
@@ -723,26 +723,26 @@ unittest
     // otherwise it'll be serialized in a single byte.
 
     const ushort[] array = [ 0, ushort.max / 2, 0xFF ];
-    // ushort.max / 2 = 32767: 0b01111111_11111111 => 255, 127
-    assert(array.serializeFull() == [ 3, 0, 0xFD, 255, 127, 0xFD, 0xFF, 0 ]);
+    // ushort.max / 2 = 32767: 0b01111111_11111111 => 127, 255
+    assert(array.serializeFull() == [ 3, 0, 0xFD, 127, 255, 0xFD, 0, 0xFF ]);
 
     static struct S
     {
         uint[] arr = [ 0, ushort.max / 2, 0xFF ];
     }
-    assert(S.init.serializeFull() == [3, 0, 0xFD, 255, 127, 0xFD, 0xFF, 0 ]);
+    assert(S.init.serializeFull() == [3, 0, 0xFD, 127, 255, 0xFD, 0, 0xFF ]);
 
 
     const uint[] array2 = [ 0xF000_FFFF, 0xFFFF_0000 ];
     assert(array2.serializeFull(CompactMode.No) ==
-           [ 2, 0xFF, 0xFF, 0x00, 0xF0, 0x00, 0x00, 0xFF, 0xFF ]);
+           [ 2, 0xF0, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00 ]);
 
     static struct S2
     {
         uint[] arr = [ 0xF000_FFFF, 0xFFFF_0000 ];
     }
     assert(S2.init.serializeFull(CompactMode.No) ==
-           [2, 0xFF, 0xFF, 0x00, 0xF0, 0x00, 0x00, 0xFF, 0xFF ]);
+           [2, 0xF0, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00 ]);
 
 }
 
@@ -780,10 +780,10 @@ unittest
     import std.exception;
 
     static struct Bomb { ubyte[] data; }
-    ushort length = 0xFF_00;
     ubyte[16192] bomb;
     bomb[0] = 0xFD;
-    bomb[1 .. 3] = (cast(ubyte*)&length)[0 .. ushort.sizeof];
+    bomb[1] = 0xFF;
+    bomb[2] = 0xFF;
     assertThrown!(Exception)(deserializeFull!Bomb(bomb));
 }
 
@@ -882,17 +882,17 @@ private void toVarInt (T) (in T var, scope SerializeDg dg) @trusted
     else if (var <= ushort.max)
     {
         dg(type[0..1]);
-        dg(nativeToLittleEndian(var)[0 .. ushort.sizeof]);
+        dg(nativeToBigEndian(cast(ushort) var)[0 .. ushort.sizeof]);
     }
     else if (var <= uint.max)
     {
         dg(type[1..2]);
-        dg(nativeToLittleEndian(var)[0 .. uint.sizeof]);
+        dg(nativeToBigEndian(cast(uint) var)[0 .. uint.sizeof]);
     }
     else if (var <= ulong.max)
     {
         dg(type[2..3]);
-        dg(nativeToLittleEndian(var)[0 .. ulong.sizeof]);
+        dg(nativeToBigEndian!ulong(var)[0 .. ulong.sizeof]);
     }
     else
         assert(0);
@@ -913,22 +913,22 @@ unittest
     assert(res == [0xFC]);
     res.length = 0;
     toVarInt(253uL, dg);
-    assert(res == [0xFD, 0xFD, 0x00]);
+    assert(res == [0xFD, 0x00, 0xFD]);
     res.length = 0;
     toVarInt(255uL, dg);
-    assert(res == [0xFD, 0xFF, 0x00]);
+    assert(res == [0xFD, 0x00, 0xFF]);
     res.length = 0;
     toVarInt(ushort.max, dg);
     assert(res == [0xFD, 0xFF, 0xFF]);
     res.length = 0;
     toVarInt(0x10000u, dg);
-    assert(res == [0xFE, 0x00, 0x00, 0x01, 0x00]);
+    assert(res == [0xFE, 0x00, 0x01, 0x00, 0x00]);
     res.length = 0;
     toVarInt(uint.max, dg);
     assert(res == [0xFE, 0xFF, 0xFF, 0xFF, 0xFF]);
     res.length = 0;
     toVarInt(0x100000000u, dg);
-    assert(res == [0xFF, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00]);
+    assert(res == [0xFF, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00]);
     res.length = 0;
     toVarInt(ulong.max, dg);
     assert(res == [0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]);
@@ -969,7 +969,7 @@ private T deserializeVarInt (T) (scope DeserializeDg dg)
     T read (InType)() @trusted
     {
         import std.exception;
-        auto value = littleEndianToNative!(InType)(*cast(ubyte[InType.sizeof]*)(dg(InType.sizeof).ptr));
+        auto value = bigEndianToNative!(InType)(*cast(ubyte[InType.sizeof]*)(dg(InType.sizeof).ptr));
         static if (T.max < InType.max)
             enforce(value <= T.max);
         return cast(T)value;
@@ -994,13 +994,13 @@ unittest
     ubyte[] data = [
         0x00,                           // ulong.init
         0xFC,                           // ulong(0xFC) == 1 byte
-        0xFD, 0xFD, 0x00,               // ulong(0xFD) == 3 bytes
-        0xFD, 0xFF, 0x00,               // ulong(0xFE) == 3 bytes
+        0xFD, 0x00, 0xFD,               // ulong(0xFD) == 3 bytes
+        0xFD, 0x00, 0xFF,               // ulong(0xFE) == 3 bytes
         0xFD, 0xFF, 0xFF,               // ushort.max == 3 bytes
-        0xFE, 0x00, 0x00, 0x01, 0x00,   // 0x10000u   == 5 bytes
+        0xFE, 0x00, 0x01, 0x00, 0x00,   // 0x10000u   == 5 bytes
         0xFE, 0xFF, 0xFF, 0xFF, 0xFF,   // uint.max   == 5 bytes
         // 0x100000000u == 9bytes
-        0xFF, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
+        0xFF, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
         // ulong.max == 9bytes
         0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF];
 
@@ -1114,6 +1114,6 @@ unittest
 {
     enum QTYPE : ushort { A = 1, ALL = 255, }
     auto serialized = serializeFull(QTYPE.A);
-    assert(serialized == [ 1, 0 ]);
+    assert(serialized == [ 0, 1 ]);
     assert(deserializeFull!QTYPE(serialized) == QTYPE.A);
 }
