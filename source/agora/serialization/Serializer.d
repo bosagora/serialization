@@ -292,13 +292,14 @@ private enum hasFromBinaryFunction (T) = is(T == struct)
         T       = Top level type of data
         record  = Data to serialize
         buffer  = The buffer to reset then write to.
+        compact = Whether integers are serialized in variable-length form
 
     Returns:
         A reference to `buffer` after serialization
 
 *******************************************************************************/
 
-public ubyte[] serializeToBuffer (T) (in T record, scope return ref ubyte[] buffer)
+public ubyte[] serializeToBuffer (T) (in T record, scope return ref ubyte[] buffer, CompactMode compact = CompactMode.Yes)
     @safe
 {
     buffer.length = 0;
@@ -307,7 +308,7 @@ public ubyte[] serializeToBuffer (T) (in T record, scope return ref ubyte[] buff
     {
         buffer ~= data;
     };
-    serializePart(record, dg);
+    serializePart(record, dg, compact);
     return buffer;
 }
 
@@ -357,11 +358,11 @@ unittest
 
 *******************************************************************************/
 
-public ubyte[] serializeFull (T) (in T record)
+public ubyte[] serializeFull (T) (in T record, CompactMode compact = CompactMode.Yes)
     @safe
 {
     ubyte[] buffer;
-    return serializeToBuffer(record, buffer);
+    return serializeToBuffer(record, buffer, compact);
 }
 
 ///
