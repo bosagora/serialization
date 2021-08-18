@@ -19,7 +19,7 @@
     ---
     struct Foo
     {
-         void serialize(scope SerializeDg) const @safe;
+         void serialize (scope SerializeDg sink) const @safe;
     }
     ---
     The return type can be of another type, and other attributes
@@ -33,7 +33,7 @@
     struct Foo
     {
         static T fromBinary (T) (scope DeserializeDg data,
-            in DeserializerOptions) @safe;
+            in DeserializerOptions opts) @safe;
     }
     ---
     The deserializer might request an instance of a `const` or `immutable`
