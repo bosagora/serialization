@@ -716,14 +716,34 @@ public T deserializeFull (T) (scope DeserializeDg dg,
 // Serialization: Make sure we always serialize in little-endian format
 unittest
 {
-    const uint[] array = [0, 1, 2];
-    assert(array.serializeFull() == [3, 0, 1, 2]);
+    // To test this, we need to encode something which length > 1.
+    // Since we sometimes encode integers using a compact mode,
+    // we need to test both with and without compact mode.
+    // When using compact mode, the value used needs to be > 0xFC (252)
+    // otherwise it'll be serialized in a single byte.
+
+    const ushort[] array = [ 0, ushort.max / 2, 0xFF ];
+    // ushort.max / 2 = 32767: 0b01111111_11111111 => 255, 127
+    assert(array.serializeFull() == [ 3, 0, 0xFD, 255, 127, 0xFD, 0xFF, 0 ]);
 
     static struct S
     {
-        uint[] arr = [0, 1, 2];
+        uint[] arr = [ 0, ushort.max / 2, 0xFF ];
     }
-    assert(S.init.serializeFull() == [3, 0, 1, 2]);
+    assert(S.init.serializeFull() == [3, 0, 0xFD, 255, 127, 0xFD, 0xFF, 0 ]);
+
+
+    const uint[] array2 = [ 0xF000_FFFF, 0xFFFF_0000 ];
+    assert(array2.serializeFull(CompactMode.No) ==
+           [ 2, 0xFF, 0xFF, 0x00, 0xF0, 0x00, 0x00, 0xFF, 0xFF ]);
+
+    static struct S2
+    {
+        uint[] arr = [ 0xF000_FFFF, 0xFFFF_0000 ];
+    }
+    assert(S2.init.serializeFull(CompactMode.No) ==
+           [2, 0xFF, 0xFF, 0x00, 0xF0, 0x00, 0x00, 0xFF, 0xFF ]);
+
 }
 
 // Make sure BitBlobs are serialized without length
