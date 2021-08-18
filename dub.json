@@ -7,7 +7,16 @@
     "copyright": "Copyright © 2021, BOSAGORA Foundation",
 
     "targetType": "library",
-    "dflags": [ "-checkaction=context" ],
+
+    "configurations": [
+        {
+            "name": "library"
+        },
+        {
+            "name": "unittest",
+            "dflags": [ "-checkaction=context" ]
+        }
+    ],
 
     "dependencies": {
         "bitblob": "~>1.1"
