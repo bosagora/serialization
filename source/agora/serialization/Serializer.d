@@ -453,6 +453,10 @@ public void serializePart (T) (in T record, scope SerializeDg dg,
         }
     }
 
+    // Enum are never compact-serialized by default
+    else static if (is(T == enum))
+        serializePart!(OriginalType!T)(record, dg, CompactMode.No);
+
     // Unsigned integer may be encoded (e.g. sizes)
     // However `ubyte` doesn't need binary encoding since they it already is the
     // smallest possible size
@@ -665,7 +669,9 @@ public T deserializeFull (T) (scope DeserializeDg dg,
     // Enum deserialize as their base type
     else static if (is(T == enum))
     {
-        return cast(T) deserializeFull!(OriginalType!T)(dg, opts);
+        // https://github.com/bosagora/serialization/issues/9
+        return cast(T) deserializeFull!(OriginalType!T)(
+            dg, DeserializerOptions(opts.maxLength, CompactMode.No));
     }
 
     // 'bool' need to be converted explicitly
@@ -1080,4 +1086,13 @@ public void checkFromBinary (T) ()
         const(T) i2     = T.fromBinary!(const T)(dg, opts);
         immutable(T) i3 = T.fromBinary!(immutable T)(dg, opts);
     }
+}
+
+// https://github.com/bosagora/serialization/issues/9
+unittest
+{
+    enum QTYPE : ushort { A = 1, ALL = 255, }
+    auto serialized = serializeFull(QTYPE.A);
+    assert(serialized == [ 1, 0 ]);
+    assert(deserializeFull!QTYPE(serialized) == QTYPE.A);
 }
