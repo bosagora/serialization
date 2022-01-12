@@ -597,24 +597,10 @@ public T deserializeFull (T) (scope DeserializeDg dg,
         return T.fromBinary!T(dg, opts);
 
     // Static array needs to be handled before arrays
-    // Note: This might be optimizable for small types (char, ubyte)
     else static if (is(T : E[N], E, size_t N))
     {
-        // Small type optimization
-        static if (!hasFromBinaryFunction!E && isSomeChar!E)
-        {
-            E[] process () @trusted
-            {
-                import std.utf;
-                auto record = cast(E[]) (dg(E.sizeof * N));
-                record.validate();
-                return record;
-            }
-            return process()[0 .. N];
-        }
-        // `bytes` and `bool` and qualified
-        else static if (!hasFromBinaryFunction!E && E.sizeof == 1)
-            return (() @trusted { return (cast(E[]) dg(N)); })()[0 .. N];
+        static if (!hasFromBinaryFunction!E && (isSomeChar!E || E.sizeof == 1))
+            return (() @trusted { return (cast(E[]) dg(E.sizeof * N)); })()[0 .. N];
         // Note: This does not allocate because `staticMap` yields a tuple
         else
         {
