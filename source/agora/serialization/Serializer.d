@@ -810,6 +810,7 @@ unittest
     static struct Container
     {
         uint[4] data;
+        char[2] chs;
     }
 
     static struct Container2
@@ -821,8 +822,8 @@ unittest
     testSymmetry!Container2();
 
     Container2 c = {
-        data: [ {[ 1, 2, 3, 4 ]}, {[ 5, 6, 7, 8 ]},
-                {[ 9, 10, 11, 12 ]}, {[ 13, 14, 15, 16 ]} ]
+        data: [ {[ 1, 2, 3, 4 ], [ 'a', 'b' ]}, {[ 5, 6, 7, 8 ], [ 'c', 'd' ]},
+                {[ 9, 10, 11, 12 ], [ 'e', 'f' ]}, {[ 13, 14, 15, 16 ], [ 'g', 'h' ]} ]
     };
 
     testSymmetry(c.data[0]);
