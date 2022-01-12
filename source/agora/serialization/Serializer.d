@@ -606,7 +606,7 @@ public T deserializeFull (T) (scope DeserializeDg dg,
             E[] process () @trusted
             {
                 import std.utf;
-                auto record = cast(E[]) (dg(E.sizeof * length));
+                auto record = cast(E[]) (dg(E.sizeof * N));
                 record.validate();
                 return record;
             }
