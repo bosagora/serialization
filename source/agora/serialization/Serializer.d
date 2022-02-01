@@ -513,13 +513,11 @@ public struct DeserializerOptions
 
     Default upper bound for `deserializeLength` and friends
 
-    The value is set to a bit less than eight full pages on most systems,
-    and allows to have allocations taking a full page,
-    as the GC puts some metadata on each page.
+    0 is the special value for disabling the check by default
 
 *******************************************************************************/
 
-public enum DefaultMaxLength = 0x79D0;
+public enum DefaultMaxLength = 0;
 
 /*******************************************************************************
 
@@ -552,7 +550,7 @@ public size_t deserializeLength (
     @safe
 {
     size_t len = deserializeFull!size_t(dg);
-    if (len > upperBound)
+    if (upperBound != 0 && len > upperBound)
         throw new Exception(format("Value of 'length' exceeds upper bound (%d > %d)", len, upperBound));
     return len;
 }
