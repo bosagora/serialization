@@ -610,33 +610,11 @@ public T deserializeFull (T) (scope DeserializeDg dg,
         }
     }
 
-    // Validate strings as they are supposed to be UTF-8 encoded
-    else static if (isNarrowString!T)
-    {
-        alias E = ElementEncodingType!T;
-        size_t length = deserializeLength(dg, opts.maxLength);
-        T process () @trusted
-        {
-            import std.utf;
-            auto record = cast(E[]) (dg(E.sizeof * length));
-            record.validate();
-            return record;
-        }
-        return process().dup;
-    }
-
-    // If it's binary data, just copy it
-    else static if (is(immutable(T) == immutable(ubyte[])))
-    {
-        size_t length = deserializeLength(dg, opts.maxLength);
-        return dg(ubyte.sizeof * length).dup;
-    }
-
     // Array deserialization
     else static if (is(T : E[], E))
     {
         size_t length = deserializeLength(dg, opts.maxLength);
-        return iota(length).map!(_ => dg.deserializeFull!(ElementType!T)(opts)).array();
+        return deserializeArray!(T)(length, dg, opts);
     }
 
     // Pointers are handled as arrays, only their size must be 0 or 1
@@ -835,6 +813,59 @@ unittest
 
     const res = deserializeFull!Container2(serialized);
     assert(res == c);
+}
+
+/*******************************************************************************
+
+    Deserialize a dynamic array of a known length
+
+    This performs the same actions, checks, and optimizations
+    as `deserializeFull` but takes the length as an argument, allowing protocols
+    that have a fixed record size (e.g. DNS resource records) to deserialize
+    a record that does not include the length prefix provided by `serializeFull`
+
+    Params:
+      T      = A dynamic array type (for static arrays, use `deserializeFull`)
+      length = The length this array should be
+      dg   = Delegate to read binary data for deserialization
+      opts = Deserialization options (see the type's documentation for a list)
+
+    Returns:
+      Newly allocated deserialized array
+
+*******************************************************************************/
+
+public T deserializeArray (T) (size_t length, scope DeserializeDg dg,
+    in DeserializerOptions opts = DeserializerOptions.init) @safe
+{
+    static assert(is(T : E[], E), "Template argument `T` (`" ~ T.stringof ~
+                  "`) to `deserializeArray` is not an array type");
+
+    static assert(!is(T : E[N], E, size_t N),
+                  "`deserializeArray` should only be used for dynamic arrays, " ~
+                  "use `deserializeFull` for static array of type `" ~
+                  T.stringof ~ "`");
+
+    alias E = ElementEncodingType!T;
+
+    /// Validate strings as they are supposed to be UTF-8 encoded
+    static if (isNarrowString!T)
+    {
+        E[] process () @trusted
+        {
+            import std.utf;
+            auto record = cast(E[]) (dg(E.sizeof * length));
+            record.validate();
+            return record;
+        }
+        return process().dup;
+    }
+    // If it's binary data, just copy it
+    else static if (is(immutable(T) == immutable(ubyte[])))
+        return dg(ubyte.sizeof * length).dup;
+    // Array deserialization
+    else
+        return iota(length).map!(_ => dg.deserializeFull!(E)(opts)).array();
 }
 
 /*******************************************************************************
