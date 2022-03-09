@@ -15,10 +15,13 @@
         {
             "name": "unittest",
             "dflags": [ "-checkaction=context" ]
+        },
+        {
+            "name": "unittest-with-deps",
+            "dflags": [ "-checkaction=context" ],
+            "dependencies": {
+                "bitblob": "~>1.1"
+            }
         }
-    ],
-
-    "dependencies": {
-        "bitblob": "~>1.1"
-    }
+    ]
 }
