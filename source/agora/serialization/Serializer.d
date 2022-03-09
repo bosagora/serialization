@@ -625,8 +625,8 @@ public T deserializeFull (T) (scope DeserializeDg dg,
             if (len != 1)
                 throw new Exception(format("Pointer expected to have length of 0 or 1, got: %d", len));
             // It is important that we first deserialize and allocate the array only after it succeeds
-            // see the commit message
-            auto val = deserializeFull!(typeof(T.init[0]))(dg, opts);
+            // See https://issues.dlang.org/show_bug.cgi?id=22864
+            auto val = deserializeFull!E(dg, opts);
             return &[ val ][0];
         }
         return T.init;
