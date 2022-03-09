@@ -714,7 +714,7 @@ unittest
 }
 
 // Make sure BitBlobs are serialized without length
-unittest
+version (Have_bitblob) unittest
 {
     import geod24.bitblob;
 

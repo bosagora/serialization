@@ -28,6 +28,7 @@ jobs:
       if: runner.os != 'Windows'
       run: |
         dub test --compiler=$DC
+        dub test -c unittest-with-deps --compiler=$DC
 
     - name: '[Windows] Build & test'
       if: runner.os == 'Windows'
@@ -35,6 +36,8 @@ jobs:
       run: |
         call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
         dub test --compiler=${{ env.DC }}
+        if %errorlevel% neq 0 exit /b %errorlevel%
+        dub test -c unittest-with-deps --compiler=${{ env.DC }}
         if %errorlevel% neq 0 exit /b %errorlevel%
 
     - name: 'Upload code coverage'
