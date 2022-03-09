@@ -445,11 +445,13 @@ public void serializePart (T) (in T record, scope SerializeDg dg,
     // Pointers are handled as arrays, only their size must be 0 or 1
     else static if (is(T : E*, E))
     {
+        ubyte[1] len;
         if (record is null)
-            toVarInt(uint(0), dg);
+            dg(len[]); // Default to 0
         else
         {
-            toVarInt(uint(1), dg);
+            len[0] = 1;
+            dg(len);
             serializePart(*record, dg, compact);
         }
     }
