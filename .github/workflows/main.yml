@@ -8,13 +8,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-18.04, macOS-10.15, windows-2019 ]
+        os: [ ubuntu-latest, macOS-latest, windows-latest ]
         dc: [ ldc-master, ldc-latest, ldc-1.25.0, dmd-latest, dmd-2.090.1 ]
         exclude:
           # https://github.com/dlang/dub/issues/1914
           # https://github.com/dlang/dub/issues/1915
-          - { os: windows-2019, dc: dmd-latest }
-          - { os: windows-2019, dc: dmd-2.090.1 }
+          - { os: windows-latest, dc: dmd-latest }
+          - { os: windows-latest, dc: dmd-2.090.1 }
 
     runs-on: ${{ matrix.os }}
 
