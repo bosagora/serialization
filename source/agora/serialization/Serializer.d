@@ -299,7 +299,7 @@ private enum hasFromBinaryFunction (T) = is(T == struct)
 
 *******************************************************************************/
 
-public ubyte[] serializeToBuffer (T) (in T record, scope return ref ubyte[] buffer, CompactMode compact = CompactMode.Yes)
+public ubyte[] serializeToBuffer (T) (in T record, return scope ref ubyte[] buffer, CompactMode compact = CompactMode.Yes)
     @safe
 {
     buffer.length = 0;
